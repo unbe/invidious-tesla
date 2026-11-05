@@ -19,7 +19,7 @@
     "description": "An alternative front-end to YouTube",
     "start_url": "/",
     "share_target": {
-        "action": "/share-target",
+        "action": "/api/cast/share",
         "method": "GET",
         "params": {
             "title": "title",

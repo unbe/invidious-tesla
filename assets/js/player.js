@@ -99,6 +99,17 @@ if (teslaCanvas && typeof CanvasPlayerEngine !== 'undefined') {
     }
 
     canvasEngine.loadStream(videoUrl);
+
+    // Ensure fullscreen requests target the tesla container (canvas + controls)
+    if (player && typeof player.requestFullscreen === 'function') {
+        player.requestFullscreen = function() {
+            var container = document.getElementById('tesla-container');
+            if (container) {
+                var req = container.requestFullscreen || container.webkitRequestFullscreen || container.mozRequestFullScreen || container.msRequestFullscreen;
+                if (req) return req.call(container);
+            }
+        };
+    }
 }
 
 player.on('error', function () {

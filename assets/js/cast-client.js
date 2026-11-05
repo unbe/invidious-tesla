@@ -12,9 +12,17 @@
                     try {
                         const msg = JSON.parse(event.data);
                         if (msg.type === 'play' && (msg.videoId || msg.url)) {
+                            const currentSenderId = sessionStorage.getItem('piped_sender_id');
+                            if (msg.senderId && currentSenderId && msg.senderId === currentSenderId) {
+                                return; // Ignore our own cast
+                            }
+
                             let targetUrl = '';
                             if (msg.videoId) {
                                 targetUrl = '/watch?v=' + encodeURIComponent(msg.videoId) + '&tesla=true';
+                                if (msg.time && msg.time > 0) {
+                                    targetUrl += '&t=' + encodeURIComponent(msg.time);
+                                }
                             } else if (msg.url) {
                                 const urlObj = new URL(msg.url, window.location.origin);
                                 targetUrl = urlObj.pathname + urlObj.search;

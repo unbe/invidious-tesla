@@ -33,6 +33,22 @@
         %>
             <source src="<%= src_url %>" type='<%= mimetype %>' label="<%= bitrate %>k" selected="<%= selected %>">
         <% end %>
+
+        <% preferred_captions.each do |caption|
+            api_captions_url = "/api/v1/captions/"
+            api_captions_url = invidious_companion.public_url.to_s + api_captions_url if (invidious_companion)
+            api_captions_check_id = "&check=#{invidious_companion_check_id}"
+        %>
+            <track kind="captions" src="<%= api_captions_url %><%= video.id %>?label=<%= caption.name %><%= api_captions_check_id %>" label="<%= caption.name %>">
+        <% end %>
+
+        <% captions.each do |caption|
+            api_captions_url = "/api/v1/captions/"
+            api_captions_url = invidious_companion.public_url.to_s + api_captions_url if (invidious_companion)
+            api_captions_check_id = "&check=#{invidious_companion_check_id}"
+        %>
+            <track kind="captions" src="<%= api_captions_url %><%= video.id %>?label=<%= caption.name %><%= api_captions_check_id %>" label="<%= caption.name %>">
+        <% end %>
     </audio>
 </div>
 <% else %>
@@ -137,5 +153,4 @@
 </script>
 <script src="/js/mp4box.all.min.js?v=<%= ASSET_COMMIT %>"></script>
 <script src="/js/canvasPlayer.js?v=<%= ASSET_COMMIT %>"></script>
-<script src="/js/cast-client.js?v=<%= ASSET_COMMIT %>"></script>
 <script src="/js/player.js?v=<%= ASSET_COMMIT %>"></script>

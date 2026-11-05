@@ -117,6 +117,9 @@
                         return;
                     }
                     this.frameQueue.push(frame);
+                    if (this.mediaClock && this.mediaClock.paused && this.frameQueue.length === 1) {
+                        this.renderFrame();
+                    }
                 },
                 error: err => {
                     console.error('CanvasPlayer: VideoDecoder error:', err);
