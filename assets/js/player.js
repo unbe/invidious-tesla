@@ -73,12 +73,17 @@ if (teslaCanvas && typeof CanvasPlayerEngine !== 'undefined') {
     var rawPlayerEl = document.getElementById('player_html5_api') || document.querySelector('#tesla-container audio') || document.getElementById('player');
     var mediaClock = rawPlayerEl;
     if (player && typeof player.tech === 'function') {
-        var tech = player.tech({ IWillNotUseThisInPlugins: true });
-        if (tech && tech.el) {
-            mediaClock = tech.el();
+        try {
+            var tech = player.tech({ IWillNotUseThisInPlugins: true });
+            if (tech && tech.el) {
+                mediaClock = tech.el();
+            }
+        } catch (e) {
+            console.warn('CanvasPlayer: tech.el() fallback used', e);
         }
     }
     canvasEngine = new CanvasPlayerEngine(teslaCanvas, mediaClock);
+    window.canvasEngine = canvasEngine;
 
     // Pick video stream URL: best progressive MP4 stream
     var videoStreams = (player_data && player_data.video_streams) || [];

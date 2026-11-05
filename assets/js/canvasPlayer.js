@@ -63,18 +63,21 @@
             this.mediaClock.removeEventListener('ratechange', this._onRateChange);
         }
 
-        extractCodecDescription(sample) {
+        extractCodecDescription() {
             if (!this.videoTrack || !this.mp4box) return null;
-            const entry = this.videoTrack.description;
-            if (!entry) return null;
-
+            const trak = this.mp4box.moov?.traks?.find(t => t.tkhd.track_id === this.videoTrack.id);
+            if (!trak?.mdia?.minf?.stbl?.stsd?.entries?.length) return null;
+            const entry = trak.mdia.minf.stbl.stsd.entries[0];
             const box = entry.avcC || entry.hvcC || entry.vpcC || entry.av1C;
             if (!box) return null;
 
             try {
-                const stream = new MP4Box.DataStream(undefined, 0, MP4Box.DataStream.BIG_ENDIAN);
+                const DS = (typeof DataStream !== 'undefined' ? DataStream : (typeof MP4Box !== 'undefined' ? MP4Box.DataStream : null));
+                if (!DS) return null;
+                const stream = new DS(undefined, 0, DS.BIG_ENDIAN);
                 box.write(stream);
                 const descLength = stream.position - 8;
+                if (descLength <= 0) return null;
                 return new Uint8Array(stream.buffer, 8, descLength);
             } catch (err) {
                 console.warn('CanvasPlayer: Could not extract codec description:', err);
@@ -112,10 +115,6 @@
                     if (this.isDestroyed) {
                         frame.close();
                         return;
-                    }
-                    if (this.frameQueue.length > 25) {
-                        const oldFrame = this.frameQueue.shift();
-                        oldFrame.close();
                     }
                     this.frameQueue.push(frame);
                 },
@@ -163,7 +162,7 @@
                 await this.initDecoder();
 
                 this.mp4box.setExtractionOptions(this.videoTrack.id, null, {
-                    nbSamples: 1000
+                    nbSamples: 30
                 });
 
                 this.mp4box.onSamples = (trackId, ref, samples) => {
@@ -185,29 +184,44 @@
 
         async fetchInitialMoov() {
             this.abortController = new AbortController();
-            const initialFetchSize = 2 * 1024 * 1024; // 2 MB
-            try {
-                const res = await fetch(this.videoUrl, {
-                    headers: { Range: `bytes=0-${initialFetchSize - 1}` },
-                    signal: this.abortController.signal
-                });
+            const chunkSize = 2 * 1024 * 1024; // 2 MB
+            let offset = 0;
+            while (!this.isReady && !this.isDestroyed) {
+                try {
+                    let endByte = offset + chunkSize - 1;
+                    if (this.totalBytes !== null && endByte >= this.totalBytes) {
+                        endByte = this.totalBytes - 1;
+                    }
+                    const res = await fetch(this.videoUrl, {
+                        headers: { Range: `bytes=${offset}-${endByte}` },
+                        signal: this.abortController.signal
+                    });
 
-                const contentRange = res.headers.get('Content-Range');
-                if (contentRange) {
-                    const match = contentRange.match(/\/(\d+)$/);
-                    if (match) this.totalBytes = parseInt(match[1], 10);
-                }
+                    const contentRange = res.headers.get('Content-Range');
+                    if (contentRange && this.totalBytes === null) {
+                        const match = contentRange.match(/\/(\d+)$/);
+                        if (match) this.totalBytes = parseInt(match[1], 10);
+                    }
 
-                const buf = await res.arrayBuffer();
-                buf.fileStart = 0;
-                this.currentByteOffset = buf.byteLength;
+                    if (!res.ok) break;
 
-                if (this.mp4box && !this.isDestroyed) {
-                    this.mp4box.appendBuffer(buf);
-                }
-            } catch (err) {
-                if (err.name !== 'AbortError') {
-                    console.error('CanvasPlayer: Failed initial fetch:', err);
+                    const buf = await res.arrayBuffer();
+                    if (!buf.byteLength) break;
+                    buf.fileStart = offset;
+                    offset += buf.byteLength;
+                    this.currentByteOffset = offset;
+
+                    if (this.mp4box && !this.isDestroyed) {
+                        this.mp4box.appendBuffer(buf);
+                    }
+
+                    if (this.totalBytes !== null && offset >= this.totalBytes) break;
+                    await new Promise(r => setTimeout(r, 0));
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('CanvasPlayer: Failed initial fetch:', err);
+                    }
+                    break;
                 }
             }
         }
@@ -215,12 +229,15 @@
         async bufferAhead() {
             if (this.isFetching || this.isDestroyed || !this.isReady || this.isSeeking) return;
 
+            // Cap queue length to prevent GPU RAM exhaustion (25 frames)
+            if (this.frameQueue.length >= 25) return;
+
             const currentTime = this.mediaClock ? this.mediaClock.currentTime : 0;
             const bufferedAhead = (this.frameQueue.length > 0)
                 ? (this.frameQueue[this.frameQueue.length - 1].timestamp / 1_000_000) - currentTime
                 : 0;
 
-            if (bufferedAhead >= 12) return;
+            if (bufferedAhead >= 6) return;
             if (this.totalBytes !== null && this.currentByteOffset >= this.totalBytes) return;
 
             this.isFetching = true;
@@ -312,34 +329,40 @@
         renderFrame() {
             if (!this.ctx || !this.mediaClock || this.frameQueue.length === 0) return;
 
-            const currentClockMicros = this.mediaClock.currentTime * 1_000_000;
-            let targetFrame = null;
+            const masterTimeUs = this.mediaClock.currentTime * 1_000_000;
 
-            while (this.frameQueue.length > 0) {
-                const nextFrame = this.frameQueue[0];
-                const timeDiff = nextFrame.timestamp - currentClockMicros;
-
-                // Frame is in the future (> 50ms ahead)
-                if (timeDiff > 50_000) break;
-
-                const frame = this.frameQueue.shift();
-
-                // Drop preroll frames from past seek keyframes
-                if (timeDiff >= -60_000 && timeDiff <= 50_000) {
-                    if (targetFrame) targetFrame.close();
-                    targetFrame = frame;
-                } else {
-                    frame.close();
+            // 1. Drop stale preroll frames older than master clock (with 60ms tolerance)
+            while (this.frameQueue.length > 0 && this.frameQueue[0].timestamp < masterTimeUs - 60_000) {
+                if (this.frameQueue.length === 1 && (this.mediaClock.paused || this.isSeeking)) {
+                    break;
                 }
+                const staleFrame = this.frameQueue.shift();
+                staleFrame.close();
             }
 
-            if (targetFrame) {
-                try {
-                    this.ctx.drawImage(targetFrame, 0, 0, this.canvas.width, this.canvas.height);
-                } catch (err) {
-                    console.error('CanvasPlayer drawImage error:', err);
-                } finally {
-                    targetFrame.close();
+            // 2. Render frame closest to current master clock
+            if (this.frameQueue.length > 0) {
+                const headFrame = this.frameQueue[0];
+                const timeDiff = headFrame.timestamp - masterTimeUs;
+
+                if (timeDiff >= -60_000 && timeDiff <= 50_000) {
+                    try {
+                        this.ctx.drawImage(headFrame, 0, 0, this.canvas.width, this.canvas.height);
+                    } catch (e) {
+                        console.warn("CanvasPlayer: drawImage error:", e);
+                    }
+
+                    if (this.frameQueue.length > 1 && this.frameQueue[1].timestamp <= masterTimeUs) {
+                        const consumed = this.frameQueue.shift();
+                        consumed.close();
+                        try {
+                            this.ctx.drawImage(this.frameQueue[0], 0, 0, this.canvas.width, this.canvas.height);
+                        } catch {}
+                    }
+                } else if (this.mediaClock.paused && this.frameQueue.length === 1) {
+                    try {
+                        this.ctx.drawImage(headFrame, 0, 0, this.canvas.width, this.canvas.height);
+                    } catch {}
                 }
             }
         }
