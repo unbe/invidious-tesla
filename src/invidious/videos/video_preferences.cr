@@ -28,6 +28,7 @@ module Invidious::Videos
     property volume : Int32
     property vr_mode : Bool
     property save_player_pos : Bool
+    property tesla : Bool
   end
 
   def process_video_params(query, preferences)
@@ -51,6 +52,7 @@ module Invidious::Videos
     volume = query["volume"]?.try &.to_i?
     vr_mode = query["vr_mode"]?.try { |q| (q == "true" || q == "1").to_unsafe }
     save_player_pos = query["save_player_pos"]?.try { |q| (q == "true" || q == "1").to_unsafe }
+    tesla = query["tesla"]?.try { |q| (q == "true" || q == "1").to_unsafe } || query["canvas"]?.try { |q| (q == "true" || q == "1").to_unsafe }
 
     if preferences
       # region ||= preferences.region
@@ -107,6 +109,7 @@ module Invidious::Videos
     extend_desc = extend_desc == 1
     vr_mode = vr_mode == 1
     save_player_pos = save_player_pos == 1
+    tesla = tesla == 1
 
     if CONFIG.disabled?("dash") && quality == "dash"
       quality = "high"
@@ -159,6 +162,7 @@ module Invidious::Videos
       volume:             volume,
       vr_mode:            vr_mode,
       save_player_pos:    save_player_pos,
+      tesla:              tesla,
     })
 
     return params

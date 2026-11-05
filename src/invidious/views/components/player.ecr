@@ -1,6 +1,41 @@
 <%
     invidious_companion_check_id = invidious_companion_encrypt(video.id) if invidious_companion
 %>
+<% if params.tesla %>
+<div id="tesla-container" style="position:relative;width:100%;background-color:#000;display:flex;align-items:center;justify-content:center">
+    <canvas id="tesla-canvas" style="width:100%;height:100%;max-height:80vh;object-fit:contain;display:block"></canvas>
+    <audio style="outline:none;width:100%;position:absolute;bottom:0;left:0;z-index:2"
+        id="player" class="on-video_player video-js player-style-<%= params.player_style %>"
+        preload="<% if params.preload %>auto<% else %>none<% end %>"
+        <% if params.autoplay %>autoplay<% end %>
+        <% if params.video_loop %>loop<% end %>
+        <% if params.controls %>controls<% end %>>
+        <%
+           best_m4a_stream_index = 0
+           best_m4a_stream_bitrate = 0
+           audio_streams.each_with_index do |fmt, i|
+             bandwidth = fmt["bitrate"].as_i
+             if (fmt["mimeType"].as_s.starts_with?("audio/mp4") && bandwidth > best_m4a_stream_bitrate)
+               best_m4a_stream_bitrate = bandwidth
+               best_m4a_stream_index = i
+             end
+           end
+
+           audio_streams.each_with_index do |fmt, i|
+            src_url  = "/latest_version?id=#{video.id}&itag=#{fmt["itag"]}"
+            src_url += "&local=true" if params.local
+            src_url = invidious_companion.public_url.to_s + src_url +
+                        "&check=#{invidious_companion_check_id}" if (invidious_companion)
+
+            bitrate = fmt["bitrate"]
+            mimetype = HTML.escape(fmt["mimeType"].as_s)
+            selected = (i == best_m4a_stream_index)
+        %>
+            <source src="<%= src_url %>" type='<%= mimetype %>' label="<%= bitrate %>k" selected="<%= selected %>">
+        <% end %>
+    </audio>
+</div>
+<% else %>
 <video style="outline:none;width:100%;background-color:#000" playsinline poster="<%= thumbnail %>"
     id="player" class="on-video_player video-js player-style-<%= params.player_style %>"
     preload="<% if params.preload %>auto<% else %>none<% end %>"
@@ -85,6 +120,7 @@
         <% end %>
     <% end %>
 </video>
+<% end %>
 
 <script id="player_data" type="application/json">
 <%=
@@ -93,8 +129,13 @@
     "title" => video.title,
     "description" => HTML.escape(video.short_description),
     "thumbnail" => thumbnail,
-    "preferred_caption_found" => !preferred_captions.empty?
+    "preferred_caption_found" => !preferred_captions.empty?,
+    "is_tesla" => params.tesla,
+    "video_streams" => fmt_stream.map { |f| { "itag" => f["itag"], "quality" => f["quality"], "mimeType" => f["mimeType"] } }
 }.to_pretty_json
 %>
 </script>
+<script src="/js/mp4box.all.min.js?v=<%= ASSET_COMMIT %>"></script>
+<script src="/js/canvasPlayer.js?v=<%= ASSET_COMMIT %>"></script>
+<script src="/js/cast-client.js?v=<%= ASSET_COMMIT %>"></script>
 <script src="/js/player.js?v=<%= ASSET_COMMIT %>"></script>

@@ -65,6 +65,31 @@ if (CONFIG.videojs.max_goal_buffer_length) {
 
 var player = videojs('player', options);
 
+// Initialize Tesla Canvas Player if #tesla-canvas is present
+var teslaCanvas = document.getElementById('tesla-canvas');
+var canvasEngine = null;
+
+if (teslaCanvas && typeof CanvasPlayerEngine !== 'undefined') {
+    var rawPlayerEl = document.getElementById('player');
+    var mediaClock = (rawPlayerEl && rawPlayerEl.tagName === 'AUDIO') ? rawPlayerEl : player.tech({ IWillNotUseThisInPlugins: true }).el();
+    canvasEngine = new CanvasPlayerEngine(teslaCanvas, mediaClock);
+
+    // Pick video stream URL: best progressive MP4 stream
+    var videoStreams = (player_data && player_data.video_streams) || [];
+    var mp4Stream = videoStreams.find(function(s) {
+        return s.mimeType && s.mimeType.includes('video/mp4');
+    }) || videoStreams[0];
+
+    var videoUrl = '';
+    if (mp4Stream) {
+        videoUrl = '/latest_version?id=' + encodeURIComponent(video_data.id) + '&itag=' + mp4Stream.itag + '&local=true';
+    } else {
+        videoUrl = '/latest_version?id=' + encodeURIComponent(video_data.id) + '&local=true';
+    }
+
+    canvasEngine.loadStream(videoUrl);
+}
+
 player.on('error', function () {
     if (video_data.params.quality === 'dash') return;
 
