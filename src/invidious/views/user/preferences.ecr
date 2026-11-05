@@ -43,6 +43,11 @@
             </div>
 
             <div class="pure-control-group">
+                <label for="tesla"><%= I18n.translate(locale, "preferences_tesla_label") %></label>
+                <input name="tesla" id="tesla" type="checkbox" <% if preferences.tesla %>checked<% end %>>
+            </div>
+
+            <div class="pure-control-group">
                 <label for="speed"><%= I18n.translate(locale, "preferences_speed_label") %></label>
                 <select name="speed" id="speed">
                     <% {2.0, 1.75, 1.5, 1.25, 1.0, 0.75, 0.5, 0.25}.each do |option| %>

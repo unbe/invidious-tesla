@@ -75,6 +75,7 @@ module Invidious::Videos
       volume ||= preferences.volume
       vr_mode ||= preferences.vr_mode.to_unsafe
       save_player_pos ||= preferences.save_player_pos.to_unsafe
+      tesla ||= preferences.tesla.to_unsafe
     end
 
     annotations ||= CONFIG.default_user_preferences.annotations.to_unsafe
@@ -96,6 +97,7 @@ module Invidious::Videos
     volume ||= CONFIG.default_user_preferences.volume
     vr_mode ||= CONFIG.default_user_preferences.vr_mode.to_unsafe
     save_player_pos ||= CONFIG.default_user_preferences.save_player_pos.to_unsafe
+    tesla ||= CONFIG.default_user_preferences.tesla.to_unsafe
 
     annotations = annotations == 1
     preload = preload == 1

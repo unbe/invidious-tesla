@@ -46,6 +46,10 @@ module Invidious::Routes::PreferencesRoute
     listen ||= "off"
     listen = listen == "on"
 
+    tesla = env.params.body["tesla"]?.try &.as(String)
+    tesla ||= "off"
+    tesla = tesla == "on"
+
     local = env.params.body["local"]?.try &.as(String)
     local ||= "off"
     local = local == "on"
@@ -187,6 +191,7 @@ module Invidious::Routes::PreferencesRoute
       save_player_pos:             save_player_pos,
       default_playlist:            default_playlist,
       search_privacy:              search_privacy,
+      tesla:                       tesla,
     }.to_json)
 
     if user = env.get? "user"
@@ -270,6 +275,37 @@ module Invidious::Routes::PreferencesRoute
       else
         preferences.dark_mode = "dark"
       end
+
+      host = env.get("header_x-forwarded-host")
+      if alt = CONFIG.alternative_domains.index(host)
+        env.response.cookies["PREFS"] = Invidious::User::Cookies.prefs(CONFIG.alternative_domains[alt], preferences)
+      else
+        env.response.cookies["PREFS"] = Invidious::User::Cookies.prefs(CONFIG.domain, preferences)
+      end
+    end
+
+    if redirect
+      env.redirect referer
+    else
+      env.response.content_type = "application/json"
+      "{}"
+    end
+  end
+
+  def self.toggle_tesla(env)
+    referer = get_referer(env, unroll: false)
+
+    redirect = env.params.query["redirect"]?
+    redirect ||= "true"
+    redirect = redirect == "true"
+
+    if user = env.get? "user"
+      user = user.as(User)
+      user.preferences.tesla = !user.preferences.tesla
+      Invidious::Database::Users.update_preferences(user)
+    else
+      preferences = env.get("preferences").as(Preferences)
+      preferences.tesla = !preferences.tesla
 
       host = env.get("header_x-forwarded-host")
       if alt = CONFIG.alternative_domains.index(host)

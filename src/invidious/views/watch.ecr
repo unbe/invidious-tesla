@@ -98,6 +98,15 @@ we're going to need to do it here in order to allow for translations.
                 <i class="icon ion-md-headset"></i>
             </a>
         <% end %>
+        <% if params.tesla %>
+            <a title="Disable Tesla driving mode" id="link-iv-tesla" href="/toggle_tesla?referer=<%= URI.encode_www_form(env.request.resource) %>" style="color: #e02424">
+                <i class="icon ion-md-car"></i>
+            </a>
+        <% else %>
+            <a title="Enable Tesla driving mode" id="link-iv-tesla" href="/toggle_tesla?referer=<%= URI.encode_www_form(env.request.resource) %>">
+                <i class="icon ion-md-car"></i>
+            </a>
+        <% end %>
     </h1>
 
     <% if !video.is_listed %>
