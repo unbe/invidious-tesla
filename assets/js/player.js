@@ -70,8 +70,14 @@ var teslaCanvas = document.getElementById('tesla-canvas');
 var canvasEngine = null;
 
 if (teslaCanvas && typeof CanvasPlayerEngine !== 'undefined') {
-    var rawPlayerEl = document.getElementById('player');
-    var mediaClock = (rawPlayerEl && rawPlayerEl.tagName === 'AUDIO') ? rawPlayerEl : player.tech({ IWillNotUseThisInPlugins: true }).el();
+    var rawPlayerEl = document.getElementById('player_html5_api') || document.querySelector('#tesla-container audio') || document.getElementById('player');
+    var mediaClock = rawPlayerEl;
+    if (player && typeof player.tech === 'function') {
+        var tech = player.tech({ IWillNotUseThisInPlugins: true });
+        if (tech && tech.el) {
+            mediaClock = tech.el();
+        }
+    }
     canvasEngine = new CanvasPlayerEngine(teslaCanvas, mediaClock);
 
     // Pick video stream URL: best progressive MP4 stream
