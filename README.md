@@ -89,6 +89,18 @@
 - No Contributor License Agreement (CLA)
 
 
+## Tesla driving mode (fork additions)
+
+This fork adds a mode for the Tesla in-car browser, which blanks `<video>` elements while the car is in Drive or Reverse. It is deployed from the parent [piped-tesla](..) repository.
+
+- **Canvas player**: in Tesla mode no `<video>` element is rendered. Frames are decoded with WebCodecs (`VideoDecoder`), demuxed from progressive MP4 with `mp4box.js`, and drawn to a `<canvas>`. An `<audio>` element is the master clock for sync, seek, volume and speed. See `assets/js/canvasPlayer.js` and `assets/js/player.js`.
+- **Preference**: "Tesla driving mode" is a normal user preference (`preferences.tesla`). Toggle it in `/preferences` or with the car icon on the watch page (`/toggle_tesla`). It is stored in the `PREFS` cookie (or the account), so it persists across navigation without `?tesla=true`.
+- **Casting**: `assets/js/cast-client.js` listens to `/api/cast/events` (Server-Sent Events) and starts the shared video in the car. The cast server is not part of this repository; it lives in the parent repo.
+- **Share target**: `assets/site.webmanifest` registers the PWA as an Android share target (`POST /api/cast/share`), so you can share a YouTube link from your phone to the car.
+- **Build**: the build works from a git submodule, where `.git` is a file rather than a directory.
+
+Touched files: `assets/js/{canvasPlayer,cast-client,player}.js`, `assets/js/mp4box.all.min.js`, `assets/css/player.css`, `assets/site.webmanifest`, the player, watch, template and preferences views, and the preferences, routing and video-params code.
+
 ## Quick start
 
 **Using Invidious:**
