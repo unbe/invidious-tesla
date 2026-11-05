@@ -2,9 +2,46 @@
     invidious_companion_check_id = invidious_companion_encrypt(video.id) if invidious_companion
 %>
 <% if params.tesla %>
-<div id="tesla-container" style="position:relative;width:100%;background-color:#000;display:flex;align-items:center;justify-content:center">
-    <canvas id="tesla-canvas" style="width:100%;height:100%;max-height:80vh;object-fit:contain;display:block"></canvas>
-    <audio style="outline:none;width:100%;position:absolute;bottom:0;left:0;z-index:2"
+<style>
+    #tesla-container {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background-color: #000 !important;
+        overflow: hidden !important;
+    }
+    #tesla-canvas {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
+        display: block !important;
+        z-index: 1 !important;
+    }
+    #tesla-container .video-js {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background-color: transparent !important;
+        background: transparent !important;
+        z-index: 2 !important;
+    }
+    #tesla-container .vjs-poster {
+        display: none !important;
+    }
+    #tesla-container .video-js .vjs-tech {
+        display: none !important;
+    }
+</style>
+<div id="tesla-container">
+    <canvas id="tesla-canvas"></canvas>
+    <audio style="outline:none"
         id="player" class="on-video_player video-js player-style-<%= params.player_style %>"
         preload="<% if params.preload %>auto<% else %>none<% end %>"
         <% if params.autoplay %>autoplay<% end %>

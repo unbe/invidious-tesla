@@ -238,6 +238,46 @@ video.video-js {
   height: 0;
 }
 
+#tesla-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  overflow: hidden;
+}
+
+#tesla-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  z-index: 1;
+}
+
+#tesla-container .video-js {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: transparent !important;
+  background: transparent !important;
+  z-index: 2;
+}
+
+#tesla-container .vjs-poster {
+  display: none !important;
+}
+
+#tesla-container .video-js .vjs-tech {
+  display: none !important;
+}
+
 .mobile-operations-bar {
   display: flex;
   position: absolute;
